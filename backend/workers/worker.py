@@ -5,6 +5,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from jobs.models import Job
+from jobs.services.recurrence_service import schedule_next_run
 from .handlers.registry import get_handler
 from .retry import next_retry_time
 from .dlq import move_to_dlq
@@ -64,11 +65,18 @@ class Worker:
 
             result = handler(job.payload)
 
+            job.refresh_from_db()
+            if job.status == "cancelled":
+                logger.info({"event": "job_cancelled_during_processing", "job_id": str(job.id)})
+                return
+
             job.status = "completed"
             job.completed_at = timezone.now()
 
             job.save(update_fields=["status", "completed_at", "updated_at"])
- 
+            
+            if job.recurring_interval:
+                schedule_next_run(job)
 
             logger.info({
                 "event": "job_completed",
@@ -76,7 +84,10 @@ class Worker:
             })
 
         except Exception as e:
-
+            job.refresh_from_db()
+            if job.status == "cancelled":
+                logger.info({"event": "job_cancelled_during_failure", "job_id": str(job.id)})
+                return
             self.handle_failure(job, e)
 
     def handle_failure(self, job, error):

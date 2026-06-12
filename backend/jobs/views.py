@@ -72,6 +72,26 @@ class JobViewSet(viewsets.ModelViewSet):
             data=JobSerializer(job).data,
             message="Job updated successfully.",
         )
+    
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        with transaction.atomic():
+            job = self.get_object()
+
+            if job.status in ["completed", "failed", "cancelled"]:
+                return error_response(
+                    message=f"Cannot cancel a {job.status} job.",
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+
+            job.status = "cancelled"
+            job.save(update_fields=["status", "updated_at"])
+
+        return success_response(
+            data=JobSerializer(job).data,
+            message="Job cancelled successfully.",
+            status_code=status.HTTP_200_OK,
+        )
 
 
 class DeadLetterJobViewSet(viewsets.ReadOnlyModelViewSet):

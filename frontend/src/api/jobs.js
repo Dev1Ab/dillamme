@@ -58,6 +58,11 @@ export async function createJob(payload) {
   return unwrap(response)
 }
 
+export async function cancelJob(jobId) {
+  const response = await api.post(`jobs/${jobId}/cancel/`);
+  return unwrap(response)
+}
+
 export async function fetchDeadLetterJobs() {
   const response = await api.get('/dlq/')
   return unwrap(response) ?? []

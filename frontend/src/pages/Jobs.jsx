@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   fetchJobs,
+  cancelJob,
   getErrorMessage,
   PRIORITY_LABELS,
   STATUS_LABELS,
@@ -113,6 +114,17 @@ function Jobs() {
     return <ErrorState message={error} onRetry={loadJobs} />
   }
 
+  async function handleCancel(jobId) {
+    const confirmCancel = window.confirm("Are you sure you want to cancel this job?");
+    if (!confirmCancel) return;
+
+    try {
+      await cancelJob(jobId);
+    } catch (err) {
+      alert(getErrorMessage(err));
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -185,6 +197,7 @@ function Jobs() {
                 <th className="px-4 py-3 font-semibold">Schedule</th>
                 <th className="px-4 py-3 font-semibold">Retries</th>
                 <th className="px-4 py-3 font-semibold">Created</th>
+                <th className="px-4 py-3 font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 bg-white">
@@ -228,6 +241,16 @@ function Jobs() {
                     </td>
                     <td className="px-4 py-4 align-top text-zinc-700">
                       {formatDate(job.created_at)}
+                    </td>
+                    <td className="px-4 py-4 align-top">
+                      {['pending', 'processing'].includes(job.status) && (
+                        <button
+                          onClick={() => handleCancel(job.id)}
+                          className="rounded-md bg-red-100 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-200"
+                        >
+                          Cancel
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))
